@@ -7,5 +7,8 @@
   "license": "Unlicense",
   "author": {
     "name": "Gil Barbosa Reis"
+  },
+  "dependencies": {
+    "com.gilzoide.key-value-store": "1.0.0"
   }
 }
