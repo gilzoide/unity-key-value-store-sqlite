@@ -311,21 +311,21 @@ namespace Gilzoide.KeyValueStore.Sqlite
             RunSql("VACUUM");
         }
 
+        public void Commit()
+        {
+            if (_isInTransaction)
+            {
+                _isInTransaction = false;
+                SqliteKVS_commit(this);
+            }
+        }
+
         private void EnsureTransaction()
         {
             if (!_isInTransaction)
             {
                 _isInTransaction = true;
                 SqliteKVS_begin(this);
-            }
-        }
-
-        private void Commit()
-        {
-            if (_isInTransaction)
-            {
-                _isInTransaction = false;
-                SqliteKVS_commit(this);
             }
         }
 

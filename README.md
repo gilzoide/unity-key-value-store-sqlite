@@ -4,6 +4,8 @@
 
 ## Features
 - Supported platforms: Windows, macOS, iOS, tvOS, Android and WebGL
+- Automatic management of transactions, optimizing throughput.
+  Write operations are commited automatically once per frame.
 - Custom serialization of complex objects (class/struct types), using Key-Value Store's serialization system
 - Supports running `PRAGMA` statements for customization of the database
 - Supports running `VACUUM` statements manually
@@ -27,7 +29,7 @@ Either:
 using Gilzoide.KeyValueStore.Sqlite;
 using UnityEngine;
 
-// 1. Instantiate you SqliteKeyValueStore
+// 1. Instantiate a SqliteKeyValueStore with the desired path
 var kvs = new SqliteKeyValueStore(Application.persistentDataPath + "/MySaveFile.db");
 
 
