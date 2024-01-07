@@ -1,16 +1,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#ifdef EMBED_SQLITE
 #include "sqlite3.h"
 #include "sqlite3.c"
 const char sqlite3_version[] = SQLITE_VERSION;
-#else
-#include <sqlite3.h>
-#endif
 
 // SQL statements
-#define SQL_CREATE_TABLE "CREATE TABLE IF NOT EXISTS KeyValueStore (key TEXT NOT NULL PRIMARY KEY COLLATE BINARY, value BLOB)"
+#define SQL_CREATE_TABLE "CREATE TABLE IF NOT EXISTS KeyValueStore (key TEXT NOT NULL PRIMARY KEY, value)"
 #define SQL_SELECT "SELECT value FROM KeyValueStore WHERE key = ?1"
 #define SQL_UPSERT "INSERT INTO KeyValueStore(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value = ?2"
 #define SQL_DELETE_KEY "DELETE FROM KeyValueStore WHERE key = ?1"
