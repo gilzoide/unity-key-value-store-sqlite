@@ -99,6 +99,10 @@ namespace Gilzoide.KeyValueStore.Sqlite
 
         #endregion
 
+        public SqliteKeyValueStore() : this(":memory:")
+        {
+        }
+
         public SqliteKeyValueStore(string filename)
         {
             SqliteKVS_open(this, filename);
