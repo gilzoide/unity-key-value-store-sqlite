@@ -19,6 +19,9 @@ namespace Gilzoide.KeyValueStore.Sqlite
         private const string SqliteKvsDll = "sqlitekvs";
 #endif
 
+        [DllImport(SqliteKvsDll)]
+        private static extern int SqliteKVS_initialize();
+
         [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
         private static extern int SqliteKVS_open([In, Out] SqliteKeyValueStore kvs, string filename);
 
@@ -98,6 +101,15 @@ namespace Gilzoide.KeyValueStore.Sqlite
         }
 
         #endregion
+
+        static SqliteKeyValueStore()
+        {
+            int rc = SqliteKVS_initialize();
+            if (rc != 0)
+            {
+                Debug.LogError($"SQLite initialization failed (code {rc})");
+            }
+        }
 
         public SqliteKeyValueStore() : this(":memory:")
         {

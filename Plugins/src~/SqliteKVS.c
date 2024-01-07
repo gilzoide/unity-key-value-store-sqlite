@@ -118,6 +118,11 @@ static void SqliteKVS_reset_commit(KVS *kvs) {
 	sqlite3_reset(kvs->stmt_commit);
 }
 
+// MARK: Library initialization
+int SqliteKVS_initialize() {
+	return sqlite3_initialize();
+}
+
 // MARK: Open/Close
 int SqliteKVS_open(KVS *kvs, const void *filename_utf16) {
 	int result = sqlite3_open16(filename_utf16, &kvs->db);
