@@ -2,19 +2,10 @@
     "name": "Gilzoide.KeyValueStore.Sqlite",
     "rootNamespace": "Gilzoide.KeyValueStore.Sqlite",
     "references": [
-        "Gilzoide.KeyValueStore"
+        "Gilzoide.KeyValueStore",
+        "Gilzoide.SqliteNet"
     ],
-    "includePlatforms": [
-        "Android",
-        "Editor",
-        "iOS",
-        "macOSStandalone",
-        "tvOS",
-        "WSA",
-        "WebGL",
-        "WindowsStandalone32",
-        "WindowsStandalone64"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,
     "overrideReferences": false,
