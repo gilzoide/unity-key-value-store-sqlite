@@ -13,6 +13,7 @@
 
 ## Dependencies
 - [Key-Value Store](https://github.com/gilzoide/unity-key-value-store): interface used by this implementation, which also provides custom object serialization out of the box.
+- [SQLite-net](https://github.com/gilzoide/unity-sqlite-net): library for managing SQLite databases
 
 
 ## How to install
