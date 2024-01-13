@@ -1,115 +1,20 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using AOT;
+using SQLite;
 using UnityEngine;
 
 namespace Gilzoide.KeyValueStore.Sqlite
 {
-    [StructLayout(LayoutKind.Sequential)]
     public class SqliteKeyValueStore : IKeyValueStore, IDisposable
     {
-        #region Native functions
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-        private const string SqliteKvsDll = "__Internal";
-#else
-        private const string SqliteKvsDll = "sqlitekvs";
-#endif
-
-        [DllImport(SqliteKvsDll)]
-        private static extern int SqliteKVS_initialize();
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_open([In, Out] SqliteKeyValueStore kvs, string filename);
-
-        [DllImport(SqliteKvsDll)]
-        private static extern void SqliteKVS_close([In, Out] SqliteKeyValueStore kvs);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_try_get_int([In, Out] SqliteKeyValueStore kvs, string key, out long value);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_try_get_double([In, Out] SqliteKeyValueStore kvs, string key, out double value);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_try_get_text([In, Out] SqliteKeyValueStore kvs, string key, out IntPtr utf16, out int length);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_try_get_bytes([In, Out] SqliteKeyValueStore kvs, string key, out IntPtr bytes, out int length);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_has_key([In, Out] SqliteKeyValueStore kvs, string key);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_set_int([In, Out] SqliteKeyValueStore kvs, string key, long value);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_set_double([In, Out] SqliteKeyValueStore kvs, string key, double value);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_set_text([In, Out] SqliteKeyValueStore kvs, string key, string value, long length);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_set_bytes([In, Out] SqliteKeyValueStore kvs, string key, byte[] bytes, long length);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Unicode)]
-        private static extern int SqliteKVS_delete_key([In, Out] SqliteKeyValueStore kvs, string key);
-
-        [DllImport(SqliteKvsDll)]
-        private static extern int SqliteKVS_delete_all([In, Out] SqliteKeyValueStore kvs);
-
-        [DllImport(SqliteKvsDll)]
-        private static extern int SqliteKVS_begin([In, Out] SqliteKeyValueStore kvs);
-
-        [DllImport(SqliteKvsDll)]
-        private static extern int SqliteKVS_commit([In, Out] SqliteKeyValueStore kvs);
-
-        [DllImport(SqliteKvsDll)]
-        private static extern void SqliteKVS_reset_select(SqliteKeyValueStore kvs);
-
-        [DllImport(SqliteKvsDll, CharSet = CharSet.Ansi)]
-        private static extern int SqliteKVS_run_sql([In, Out] SqliteKeyValueStore kvs, string sql, SqlErrorDelegate errorCallback, SqlRowDelegate rowCallback);
-
-        #endregion
-
-        #region Native callbacks
-
-        private delegate void SqlErrorDelegate(IntPtr errorUtf8);
-        unsafe private delegate int SqlRowDelegate(IntPtr kvs, int columnCount, IntPtr* values, IntPtr* columnNames);
-
-        private readonly static List<string> _sqlReturn = new List<string>();
-        private static string _sqlError;
-
-        [MonoPInvokeCallback(typeof(SqlErrorDelegate))]
-        private static void SqlErrorCallback(IntPtr errorUtf8)
-        {
-            _sqlError = Marshal.PtrToStringUTF8(errorUtf8);
-        }
-
-        [MonoPInvokeCallback(typeof(SqlRowDelegate))]
-        unsafe private static int SqlRowCallback(IntPtr kvs, int columnCount, IntPtr* values, IntPtr* columnNames)
-        {
-            for (int i = 0; i < columnCount; i++)
-            {
-                string value = Marshal.PtrToStringUTF8(values[i]);
-                _sqlReturn.Add(value);
-            }
-            return 0;
-        }
-
-        #endregion
-
-        static SqliteKeyValueStore()
-        {
-            int rc = SqliteKVS_initialize();
-            if (rc != 0)
-            {
-                Debug.LogError($"SQLite initialization failed (code {rc})");
-            }
-        }
+        public const string CreateTableSql = "CREATE TABLE IF NOT EXISTS KeyValueStore (key TEXT NOT NULL PRIMARY KEY, value)";
+        public const string DeleteAllSql = "DELETE FROM KeyValueStore";
+        public const string DeleteKeySql = "DELETE FROM KeyValueStore WHERE key = ?";
+        public const string UpsertSql = "INSERT INTO KeyValueStore(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value = ?2";
+        public const string SelectSql = "SELECT value FROM KeyValueStore WHERE key = ?";
+        public const string BeginSql = "BEGIN";
+        public const string CommitSql = "COMMIT";
 
         public SqliteKeyValueStore() : this(":memory:")
         {
@@ -117,7 +22,8 @@ namespace Gilzoide.KeyValueStore.Sqlite
 
         public SqliteKeyValueStore(string filename)
         {
-            SqliteKVS_open(this, filename);
+            _db = new SQLiteConnection(filename);
+            _db.Execute(CreateTableSql);
         }
 
         ~SqliteKeyValueStore()
@@ -125,57 +31,112 @@ namespace Gilzoide.KeyValueStore.Sqlite
             Dispose();
         }
 
-#pragma warning disable IDE0044
-        private IntPtr _db = IntPtr.Zero;
-        private IntPtr _stmtSelect = IntPtr.Zero;
-        private IntPtr _stmtUpsert = IntPtr.Zero;
-        private IntPtr _stmtDeleteKey = IntPtr.Zero;
-        private IntPtr _stmtDeleteAll = IntPtr.Zero;
-        private IntPtr _stmtBegin = IntPtr.Zero;
-        private IntPtr _stmtCommit = IntPtr.Zero;
+        private SqlitePreparedStatement SelectStmt => _selectStmt != null ? _selectStmt : (_selectStmt = new SqlitePreparedStatement(_db, SelectSql));
+        private SqlitePreparedStatement UpsertStmt => _upsertStmt != null ? _upsertStmt : (_upsertStmt = new SqlitePreparedStatement(_db, UpsertSql));
+        private SqlitePreparedStatement DeleteAllStmt => _deleteAllStmt != null ? _deleteAllStmt : (_deleteAllStmt = new SqlitePreparedStatement(_db, DeleteAllSql));
+        private SqlitePreparedStatement DeleteKeyStmt => _deleteKeyStmt != null ? _deleteKeyStmt : (_deleteKeyStmt = new SqlitePreparedStatement(_db, DeleteKeySql));
+        private SqlitePreparedStatement BeginStmt => _beginStmt != null ? _beginStmt : (_beginStmt = new SqlitePreparedStatement(_db, BeginSql));
+        private SqlitePreparedStatement CommitStmt => _commitStmt != null ? _commitStmt : (_commitStmt = new SqlitePreparedStatement(_db, CommitSql));
+
+        private readonly SQLiteConnection _db;
+        private SqlitePreparedStatement _selectStmt;
+        private SqlitePreparedStatement _upsertStmt;
+        private SqlitePreparedStatement _deleteAllStmt;
+        private SqlitePreparedStatement _deleteKeyStmt;
+        private SqlitePreparedStatement _beginStmt;
+        private SqlitePreparedStatement _commitStmt;
         private bool _isInTransaction = false;
         private bool _isPendingCommit = false;
-#pragma warning restore IDE0044
 
         public void DeleteAll()
         {
             EnsureTransaction();
-            SqliteKVS_delete_all(this);
-            ScheduleCommit();
+            try
+            {
+                DeleteAllStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                DeleteAllStmt.Reset();
+            }
         }
 
         public void DeleteKey(string key)
         {
             EnsureTransaction();
-            SqliteKVS_delete_key(this, key);
-            ScheduleCommit();
+            try
+            {
+                DeleteKeyStmt.Bind(1, key);
+                DeleteKeyStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                DeleteKeyStmt.Reset();
+            }
         }
 
         public bool HasKey(string key)
         {
             EnsureTransaction();
-            int result = SqliteKVS_has_key(this, key);
-            SqliteKVS_reset_select(this);
-            return result == 1;
+            try
+            {
+                SelectStmt.Bind(1, key);
+                return SelectStmt.Step() == SQLite3.Result.Row;
+            }
+            finally
+            {
+                SelectStmt.Reset();
+            }
         }
 
         public void SetBool(string key, bool value)
         {
-            SetLong(key, value ? 1 : 0);
+            EnsureTransaction();
+            try
+            {
+                UpsertStmt.Bind(1, key);
+                UpsertStmt.Bind(2, value);
+                UpsertStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                UpsertStmt.Reset();
+            }
         }
 
         public void SetBytes(string key, byte[] value)
         {
             EnsureTransaction();
-            SqliteKVS_set_bytes(this, key, value, value?.Length ?? 0);
-            ScheduleCommit();
+            try
+            {
+                UpsertStmt.Bind(1, key);
+                UpsertStmt.Bind(2, value);
+                UpsertStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                UpsertStmt.Reset();
+            }
         }
 
         public void SetDouble(string key, double value)
         {
             EnsureTransaction();
-            SqliteKVS_set_double(this, key, value);
-            ScheduleCommit();
+            try
+            {
+                UpsertStmt.Bind(1, key);
+                UpsertStmt.Bind(2, value);
+                UpsertStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                UpsertStmt.Reset();
+            }
         }
 
         public void SetFloat(string key, float value)
@@ -191,15 +152,33 @@ namespace Gilzoide.KeyValueStore.Sqlite
         public void SetLong(string key, long value)
         {
             EnsureTransaction();
-            SqliteKVS_set_int(this, key, value);
-            ScheduleCommit();
+            try
+            {
+                UpsertStmt.Bind(1, key);
+                UpsertStmt.Bind(2, value);
+                UpsertStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                UpsertStmt.Reset();
+            }
         }
 
         public void SetString(string key, string value)
         {
             EnsureTransaction();
-            SqliteKVS_set_text(this, key, value, value?.Length * sizeof(char) ?? 0);
-            ScheduleCommit();
+            try
+            {
+                UpsertStmt.Bind(1, key);
+                UpsertStmt.Bind(2, value);
+                UpsertStmt.Step();
+                ScheduleCommit();
+            }
+            finally
+            {
+                UpsertStmt.Reset();
+            }
         }
 
         public bool TryGetBool(string key, out bool value)
@@ -219,26 +198,47 @@ namespace Gilzoide.KeyValueStore.Sqlite
         public bool TryGetBytes(string key, out byte[] value)
         {
             EnsureTransaction();
-            int result = SqliteKVS_try_get_bytes(this, key, out IntPtr bytes, out int length);
-            if (result == 1)
+            try
             {
-                value = new byte[length];
-                Marshal.Copy(bytes, value, 0, length);
+                SelectStmt.Bind(1, key);
+                switch (SelectStmt.Step())
+                {
+                    case SQLite3.Result.Row:
+                        value = SelectStmt.GetBlob(0);
+                        return true;
+
+                    default:
+                        value = default;
+                        return false;
+                }
             }
-            else
+            finally
             {
-                value = null;
+                SelectStmt.Reset();
             }
-            SqliteKVS_reset_select(this);
-            return result == 1;
         }
 
         public bool TryGetDouble(string key, out double value)
         {
             EnsureTransaction();
-            int result = SqliteKVS_try_get_double(this, key, out value);
-            SqliteKVS_reset_select(this);
-            return result == 1;
+            try
+            {
+                SelectStmt.Bind(1, key);
+                switch (SelectStmt.Step())
+                {
+                    case SQLite3.Result.Row:
+                        value = SelectStmt.GetDouble(0);
+                        return true;
+
+                    default:
+                        value = default;
+                        return false;
+                }
+            }
+            finally
+            {
+                SelectStmt.Reset();
+            }
         }
 
         public bool TryGetFloat(string key, out float value)
@@ -272,59 +272,75 @@ namespace Gilzoide.KeyValueStore.Sqlite
         public bool TryGetLong(string key, out long value)
         {
             EnsureTransaction();
-            int result = SqliteKVS_try_get_int(this, key, out value);
-            SqliteKVS_reset_select(this);
-            return result == 1;
+            try
+            {
+                SelectStmt.Bind(1, key);
+                switch (SelectStmt.Step())
+                {
+                    case SQLite3.Result.Row:
+                        value = SelectStmt.GetLong(0);
+                        return true;
+
+                    default:
+                        value = default;
+                        return false;
+                }
+            }
+            finally
+            {
+                SelectStmt.Reset();
+            }
         }
 
         public bool TryGetString(string key, out string value)
         {
             EnsureTransaction();
-            int result = SqliteKVS_try_get_bytes(this, key, out IntPtr utf16, out int length);
-            if (result == 1)
+            try
             {
-                value = Marshal.PtrToStringUni(utf16, length / sizeof(char));
+                SelectStmt.Bind(1, key);
+                switch (SelectStmt.Step())
+                {
+                    case SQLite3.Result.Row:
+                        value = SelectStmt.GetText(0);
+                        return true;
+
+                    default:
+                        value = default;
+                        return false;
+                }
             }
-            else
+            finally
             {
-                value = null;
+                SelectStmt.Reset();
             }
-            SqliteKVS_reset_select(this);
-            return result == 1;
         }
 
         public void Dispose()
         {
             Commit();
-            SqliteKVS_close(this);
+            _selectStmt?.Dispose();
+            _upsertStmt?.Dispose();
+            _deleteAllStmt?.Dispose();
+            _deleteKeyStmt?.Dispose();
+            _beginStmt?.Dispose();
+            _commitStmt?.Dispose();
+            _db.Dispose();
         }
 
-        public void Pragma(string pragma, List<string> out_values = null)
+        public string Pragma(string pragma)
         {
             Debug.Assert(!pragma.Contains(";"), "Pragma strings must not contain ';'");
             if (!pragma.TrimStart().StartsWith("pragma ", true, CultureInfo.InvariantCulture))
             {
                 pragma = "PRAGMA " + pragma;
             }
-            if (out_values != null)
-            {
-                unsafe
-                {
-                    RunSql(pragma, SqlRowCallback);
-                }
-                out_values.AddRange(_sqlReturn);
-                _sqlReturn.Clear();
-            }
-            else
-            {
-                RunSql(pragma);
-            }
+            return _db.ExecuteScalar<string>(pragma);
         }
 
         public void Vacuum()
         {
             Commit();
-            RunSql("VACUUM");
+            _db.Execute("VACUUM");
         }
 
         public void Commit()
@@ -332,7 +348,14 @@ namespace Gilzoide.KeyValueStore.Sqlite
             if (_isInTransaction)
             {
                 _isInTransaction = false;
-                SqliteKVS_commit(this);
+                try
+                {
+                    CommitStmt.Step();
+                }
+                finally
+                {
+                    CommitStmt.Reset();
+                }
             }
         }
 
@@ -341,7 +364,14 @@ namespace Gilzoide.KeyValueStore.Sqlite
             if (!_isInTransaction)
             {
                 _isInTransaction = true;
-                SqliteKVS_begin(this);
+                try
+                {
+                    BeginStmt.Step();
+                }
+                finally
+                {
+                    BeginStmt.Reset();
+                }
             }
         }
 
@@ -361,17 +391,6 @@ namespace Gilzoide.KeyValueStore.Sqlite
             finally
             {
                 _isPendingCommit = false;
-            }
-        }
-
-        private void RunSql(string sql, SqlRowDelegate sqlRowDelegate = null)
-        {
-            SqliteKVS_run_sql(this, sql, SqlErrorCallback, sqlRowDelegate);
-            if (_sqlError != null)
-            {
-                string error = _sqlError;
-                _sqlError = null;
-                throw new InvalidOperationException(error);
             }
         }
     }
