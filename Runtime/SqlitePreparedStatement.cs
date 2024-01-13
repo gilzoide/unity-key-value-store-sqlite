@@ -11,7 +11,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
         [DllImport(SQLite3.LibraryPath, EntryPoint = "sqlite3_column_bytes16", CallingConvention = CallingConvention.Cdecl)]
 		private static extern int ColumnBytes16(IntPtr stmt, int index);
 
-        private SQLiteConnection _db;
+        private IntPtr _dbHandle;
         private IntPtr _preparedStatement;
 
         public SqlitePreparedStatement(SQLiteConnection db, string statement)
@@ -21,7 +21,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
                 throw new ArgumentNullException(nameof(db));
             }
 
-            _db = db;
+            _dbHandle = db.Handle;
             _preparedStatement = SQLite3.Prepare2(db.Handle, statement);
         }
 
@@ -60,7 +60,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
             var result = SQLite3.Step(_preparedStatement);
             if (result > SQLite3.Result.OK && result < SQLite3.Result.Row)
             {
-                throw SQLiteException.New(result, SQLite3.GetErrmsg(_db.Handle));
+                throw SQLiteException.New(result, SQLite3.GetErrmsg(_dbHandle));
             }
             return result;
         }
@@ -105,7 +105,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
         {
             SQLite3.Finalize(_preparedStatement);
             _preparedStatement = IntPtr.Zero;
-            _db = null;
+            _dbHandle = IntPtr.Zero;
         }
     }
 }
