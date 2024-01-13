@@ -9,7 +9,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
         public static readonly IntPtr SQLITE_STATIC = IntPtr.Zero;
 
         [DllImport(SQLite3.LibraryPath, EntryPoint = "sqlite3_column_bytes16", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int ColumnBytes16(IntPtr stmt, int index);
+        private static extern int ColumnBytes16(IntPtr stmt, int index);
 
         private IntPtr _dbHandle;
         private IntPtr _preparedStatement;
