@@ -1,7 +1,7 @@
 {
   "name": "com.gilzoide.key-value-store.sqlite",
   "displayName": "Key-Value Store - SQLite",
-  "version": "1.0.0",
+  "version": "1.0.0-preview1",
   "description": "Key-Value Store implementation backed by the SQLite database engine",
   "homepage": "https://github.com/gilzoide/unity-key-value-store-sqlite",
   "license": "Unlicense",
