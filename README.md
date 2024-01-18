@@ -1,9 +1,10 @@
 # SQLite Key-Value Store for Unity
+[![openupm](https://img.shields.io/npm/v/com.gilzoide.key-value-store.sqlite?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.gilzoide.key-value-store.sqlite/)
+
 [Key-Value Store](https://github.com/gilzoide/unity-key-value-store) implementation backed by the [SQLite](https://sqlite.org) database engine.
 
 
 ## Features
-- Supported platforms: Windows, macOS, iOS, tvOS, Android and WebGL
 - Automatic management of transactions, optimizing throughput.
   Write operations are commited automatically once per frame.
 - Custom serialization of complex objects (class/struct types), using Key-Value Store's serialization system
@@ -18,6 +19,10 @@
 
 ## How to install
 Either:
+- Use the [openupm registry](https://openupm.com/) and install this package using the [openupm-cli](https://github.com/openupm/openupm-cli):
+  ```
+  openupm add com.gilzoide.key-value-store.sqlite
+  ```
 - Install using the [Unity Package Manager](https://docs.unity3d.com/Manual/upm-ui-giturl.html) with the following URL:
   ```
   https://github.com/gilzoide/unity-key-value-store-sqlite.git#1.0.0-preview1
