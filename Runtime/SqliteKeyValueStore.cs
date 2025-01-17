@@ -11,7 +11,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
         public const string CreateTableSql = "CREATE TABLE IF NOT EXISTS KeyValueStore (key TEXT NOT NULL PRIMARY KEY, value)";
         public const string DeleteAllSql = "DELETE FROM KeyValueStore";
         public const string DeleteKeySql = "DELETE FROM KeyValueStore WHERE key = ?";
-        public const string UpsertSql = "INSERT INTO KeyValueStore(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value = ?2";
+        public const string UpsertSql = "INSERT OR REPLACE INTO KeyValueStore(key, value) VALUES(?, ?)";
         public const string SelectSql = "SELECT value FROM KeyValueStore WHERE key = ?";
         public const string BeginSql = "BEGIN";
         public const string CommitSql = "COMMIT";
