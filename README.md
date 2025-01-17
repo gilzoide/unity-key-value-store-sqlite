@@ -5,6 +5,7 @@
 
 
 ## Features
+- Easy to use API similar to `PlayerPrefs`
 - Automatic management of transactions, optimizing throughput.
   Write operations are commited automatically once per frame.
 - Custom serialization of complex objects (class/struct types), using Key-Value Store's serialization system
@@ -36,7 +37,8 @@ using Gilzoide.KeyValueStore.Sqlite;
 using UnityEngine;
 
 // 1. Instantiate a SqliteKeyValueStore with the desired path
-var kvs = new SqliteKeyValueStore(Application.persistentDataPath + "/MySaveFile.db");
+var databasePath = $"{Application.persistentDataPath}/MySaveFile.db";
+var kvs = new SqliteKeyValueStore(databasePath);
 
 
 // 2. Set/Get/Delete values
