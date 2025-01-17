@@ -31,20 +31,20 @@ namespace Gilzoide.KeyValueStore.Sqlite
             Dispose();
         }
 
-        private SqlitePreparedStatement SelectStmt => _selectStmt != null ? _selectStmt : (_selectStmt = new SqlitePreparedStatement(_db, SelectSql));
-        private SqlitePreparedStatement UpsertStmt => _upsertStmt != null ? _upsertStmt : (_upsertStmt = new SqlitePreparedStatement(_db, UpsertSql));
-        private SqlitePreparedStatement DeleteAllStmt => _deleteAllStmt != null ? _deleteAllStmt : (_deleteAllStmt = new SqlitePreparedStatement(_db, DeleteAllSql));
-        private SqlitePreparedStatement DeleteKeyStmt => _deleteKeyStmt != null ? _deleteKeyStmt : (_deleteKeyStmt = new SqlitePreparedStatement(_db, DeleteKeySql));
-        private SqlitePreparedStatement BeginStmt => _beginStmt != null ? _beginStmt : (_beginStmt = new SqlitePreparedStatement(_db, BeginSql));
-        private SqlitePreparedStatement CommitStmt => _commitStmt != null ? _commitStmt : (_commitStmt = new SqlitePreparedStatement(_db, CommitSql));
+        private SQLitePreparedStatement SelectStmt => _selectStmt != null ? _selectStmt : (_selectStmt = new SQLitePreparedStatement(_db, SelectSql));
+        private SQLitePreparedStatement UpsertStmt => _upsertStmt != null ? _upsertStmt : (_upsertStmt = new SQLitePreparedStatement(_db, UpsertSql));
+        private SQLitePreparedStatement DeleteAllStmt => _deleteAllStmt != null ? _deleteAllStmt : (_deleteAllStmt = new SQLitePreparedStatement(_db, DeleteAllSql));
+        private SQLitePreparedStatement DeleteKeyStmt => _deleteKeyStmt != null ? _deleteKeyStmt : (_deleteKeyStmt = new SQLitePreparedStatement(_db, DeleteKeySql));
+        private SQLitePreparedStatement BeginStmt => _beginStmt != null ? _beginStmt : (_beginStmt = new SQLitePreparedStatement(_db, BeginSql));
+        private SQLitePreparedStatement CommitStmt => _commitStmt != null ? _commitStmt : (_commitStmt = new SQLitePreparedStatement(_db, CommitSql));
 
         private readonly SQLiteConnection _db;
-        private SqlitePreparedStatement _selectStmt;
-        private SqlitePreparedStatement _upsertStmt;
-        private SqlitePreparedStatement _deleteAllStmt;
-        private SqlitePreparedStatement _deleteKeyStmt;
-        private SqlitePreparedStatement _beginStmt;
-        private SqlitePreparedStatement _commitStmt;
+        private SQLitePreparedStatement _selectStmt;
+        private SQLitePreparedStatement _upsertStmt;
+        private SQLitePreparedStatement _deleteAllStmt;
+        private SQLitePreparedStatement _deleteKeyStmt;
+        private SQLitePreparedStatement _beginStmt;
+        private SQLitePreparedStatement _commitStmt;
         private bool _isInTransaction = false;
         private bool _isPendingCommit = false;
 
@@ -204,7 +204,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
                 switch (SelectStmt.Step())
                 {
                     case SQLite3.Result.Row:
-                        value = SelectStmt.GetBlob(0);
+                        value = SelectStmt.GetBytes(0);
                         return true;
 
                     default:
@@ -301,7 +301,7 @@ namespace Gilzoide.KeyValueStore.Sqlite
                 switch (SelectStmt.Step())
                 {
                     case SQLite3.Result.Row:
-                        value = SelectStmt.GetText(0);
+                        value = SelectStmt.GetString(0);
                         return true;
 
                     default:
